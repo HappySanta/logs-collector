@@ -14,19 +14,19 @@ const MinTag = "I"
 const AvgTag = "A"
 
 type UpdServer struct {
-	core *CoreStatistic
-	pc   net.PacketConn
-	host string
-	stop bool
+	core           *CoreStatistic
+	pc             net.PacketConn
+	host           string
+	stop           bool
 	debounceLogger *log.Logger
 }
 
 func CreateUpdServer(core *CoreStatistic, host string, logger *log.Logger) *UpdServer {
 	return &UpdServer{
-		core: core,
-		pc:   nil,
-		host: host,
-		stop: false,
+		core:           core,
+		pc:             nil,
+		host:           host,
+		stop:           false,
 		debounceLogger: logger,
 	}
 }
@@ -38,6 +38,7 @@ func (server *UpdServer) Start() error {
 	}
 	server.pc = pc
 	server.stop = false
+	server.debounceLogger.Println("Start udp on:", server.host)
 	for {
 		buf := make([]byte, 2048)
 		n, addr, err := pc.ReadFrom(buf)
@@ -45,9 +46,10 @@ func (server *UpdServer) Start() error {
 			if server.stop {
 				return nil
 			}
-			log.Println(err)
+			server.debounceLogger.Println(err)
+		} else {
+			server.serve(pc, addr, buf[:n])
 		}
-		server.serve(pc, addr, buf[:n])
 		if server.stop {
 			return nil
 		}
@@ -90,7 +92,6 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	paramType := dataParts[3]
 	paramValue := dataParts[4]
 
-
 	value, err := strconv.Atoi(paramValue)
 	if err != nil {
 		//bad pack
@@ -100,17 +101,16 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 
 	if paramType == SetTag {
 		server.core.Set(appName, paramName, value)
-	} else if paramName == SumTag {
+	} else if paramType == SumTag {
 		server.core.Sum(appName, paramName, value)
-	} else if paramName == MaxTag {
+	} else if paramType == MaxTag {
 		server.core.Max(appName, paramName, value)
-	} else if paramName == MinTag {
+	} else if paramType == MinTag {
 		server.core.Min(appName, paramName, value)
-	} else if paramName == AvgTag {
+	} else if paramType == AvgTag {
 		server.core.Avg(appName, paramName, value)
 	} else {
-		server.debounceLogger.Printf("Unknown param type: %s %s %s", paramType, appName, addr.String())
+		server.debounceLogger.Printf("Unknown param type: [%s] %s %s", paramType, appName, addr.String())
 		return
 	}
-	server.debounceLogger.Printf("Reveive: %s %s", string(buf), addr.String())
 }

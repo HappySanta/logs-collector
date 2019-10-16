@@ -52,5 +52,7 @@ func (server *HttpSever) handler(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintf(w, "OK")
 		go server.saver.Save(buff)
+	} else {
+		fmt.Fprintf(w, "BAD KEY")
 	}
 }

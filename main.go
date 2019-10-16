@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -22,11 +23,15 @@ func GetConfigMap() (map[string]string, error) {
 	configuration := make(map[string]string)
 	filename := "config.json"
 	file, err := os.Open(filename)
-	if err != nil {  return configuration,err }
+	if err != nil {
+		return configuration, err
+	}
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&configuration)
-	if err != nil {  return configuration,err }
-	return configuration,nil
+	if err != nil {
+		return configuration, err
+	}
+	return configuration, nil
 }
 
 func env(name string, def string) string {
@@ -60,19 +65,30 @@ func main() {
 		services.Push(udpServer)
 	}
 
+	sum := func(name string, value int) {
+		err := internal.LogSum(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, name, value)
+		if err != nil {
+			defaultLogger.Println("Err sum:", err)
+		}
+	}
 
 	if env("HTTP", "") != "" {
 		if env("POSTGRES", "") == "" {
 			defaultLogger.Fatal("Cant start http without POSTGRES env")
 		}
-		saver := internal.CreateStatSaver(defaultLogger, env("POSTGRES", ""))
+		saver := internal.CreateStatSaver(defaultLogger, env("POSTGRES", ""), sum)
 		services.Push(saver)
 		httpServer := internal.CreateHttpServer(env("HTTP", ""), env("SECRET", "secret"), defaultLogger, saver)
 		services.Push(httpServer)
 	}
 
 	if env("PROXY_TO", "") != "" {
-		proxy := internal.CreateProxySender(core, env("PROXY_TO", ""), defaultLogger)
+		saveTime, err := strconv.Atoi(env("SAVE_TIME", "60"))
+		if err != nil || saveTime <= 1 {
+			defaultLogger.Println("Bad save time, used default: 60", env("SAVE_TIME", "60"))
+			saveTime = 60
+		}
+		proxy := internal.CreateProxySender(core, env("PROXY_TO", ""), defaultLogger, saveTime)
 		services.Push(proxy)
 	}
 
@@ -81,15 +97,20 @@ func main() {
 	}
 
 	if services.Count() > 0 {
-		err := internal.LogSum( env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "start", 1 )
-		if err != nil {
-			defaultLogger.Println("Err log:",err)
-		}
 		services.RunAll()
+		go func() {
+			t := time.NewTimer(5 * time.Second)
+			<-t.C
+			err := internal.LogSum(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "start", 1)
+			if err != nil {
+				defaultLogger.Println("Err log:", err)
+			}
+		}()
+
 	} else {
-		err := internal.LogSum( env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "fail_start", 1 )
+		err := internal.LogSum(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "fail_start", 1)
 		if err != nil {
-			defaultLogger.Println("Err log:",err)
+			defaultLogger.Println("Err log:", err)
 		}
 		defaultLogger.Println("No service to start")
 		return

@@ -9,33 +9,38 @@ import (
 	"time"
 )
 
-const SendInterval = 5
-
 type ProxySender struct {
-	core   *CoreStatistic
-	logger *log.Logger
-	url    string
-	stop   bool
-	timer  *time.Ticker
+	core        *CoreStatistic
+	logger      *log.Logger
+	url         string
+	stop        bool
+	timer       *time.Ticker
+	stopCh      chan bool
+	saveTimeSec int
 }
 
-func CreateProxySender(core *CoreStatistic, url string, logger *log.Logger) *ProxySender {
+func CreateProxySender(core *CoreStatistic, url string, logger *log.Logger, saveTime int) *ProxySender {
 	return &ProxySender{
-		core:   core,
-		url:    url,
-		logger: logger,
-		stop:   false,
+		core:        core,
+		url:         url,
+		logger:      logger,
+		stop:        false,
+		saveTimeSec: saveTime,
 	}
 }
 
 func (proxy *ProxySender) Start() error {
 	proxy.stop = false
 	now := time.Now()
-	x := SendInterval - now.Second()%SendInterval
+	x := proxy.saveTimeSec - now.Second()%proxy.saveTimeSec
 	proxy.timer = time.NewTicker(time.Duration(x) * time.Second)
 	reset := true
+	proxy.stopCh = make(chan bool, 1)
 	for {
-		<-proxy.timer.C
+		select {
+		case <-proxy.timer.C:
+		case <-proxy.stopCh:
+		}
 		if proxy.stop {
 			proxy.timer.Stop()
 			return nil
@@ -43,7 +48,7 @@ func (proxy *ProxySender) Start() error {
 		if reset {
 			reset = false
 			proxy.timer.Stop()
-			proxy.timer = time.NewTicker(SendInterval * time.Second)
+			proxy.timer = time.NewTicker(time.Duration(proxy.saveTimeSec) * time.Second)
 		}
 		go proxy.send()
 	}
@@ -55,6 +60,7 @@ func (proxy *ProxySender) GetName() string {
 
 func (proxy *ProxySender) Stop() error {
 	proxy.stop = true
+	proxy.stopCh <- true
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var r *regexp.Regexp
@@ -30,13 +31,15 @@ type StatSaver struct {
 	connection     *pgx.Conn
 	stop           chan bool
 	existingTables map[string]bool
+	sum            func(name string, value int)
 }
 
-func CreateStatSaver(looger *log.Logger, url string) *StatSaver {
+func CreateStatSaver(logger *log.Logger, url string, sum func(name string, value int)) *StatSaver {
 	return &StatSaver{
-		logger:         looger,
+		logger:         logger,
 		databaseUrl:    url,
 		existingTables: make(map[string]bool),
+		sum:            sum,
 	}
 }
 
@@ -66,7 +69,7 @@ func (saver *StatSaver) Save(data map[string]map[string]int) {
 		if isValidAppName(appName) {
 			saver.SaveAppData(appName, data)
 		} else {
-			saver.logger.Println("Invalid app name ", appName)
+			saver.logger.Println("Invalid app name", appName)
 		}
 	}
 }
@@ -117,17 +120,21 @@ create index IF NOT EXISTS `+name+`_created_at_index on `+name+` (created_at des
 
 func (saver *StatSaver) save(tableName string, nodeId int, data map[string]int) error {
 
-	sqlStr := "INSERT INTO " + tableName + "(type,value,node_id) VALUES "
+	now := time.Now().UTC()
+	count := 0
+	sqlStr := "INSERT INTO " + tableName + "(created_at,type,value,node_id) VALUES "
 	var values []interface{}
 
 	x := 1
 	for name, val := range data {
-		sqlStr += fmt.Sprintf("($%d, $%d, $%d),", x, x+1, x+2)
-		values = append(values, name, val, nodeId)
-		x += 3
+		sqlStr += fmt.Sprintf("($%d,$%d, $%d, $%d),", x, x+1, x+2, x+3)
+		values = append(values, now, name, val, nodeId)
+		x += 4
+		count++
 	}
 	//trim the last ,
 	sqlStr = sqlStr[0 : len(sqlStr)-1]
 	_, err := saver.connection.Exec(context.Background(), sqlStr, values...)
+	saver.sum("saved", count)
 	return err
 }

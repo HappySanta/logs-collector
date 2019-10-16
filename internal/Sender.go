@@ -22,32 +22,16 @@ func LogSet(address, appName, paramName string, value int) error {
 }
 
 func LogStatistic(address, appName, paramName, paramType string, value int) (err error) {
-	// Resolve the UDP address so that we can make use of DialUDP
-	// with an actual IP and port instead of a name (in case a
-	// hostname is specified).
-	raddr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil {
-		return
-	}
-
-	// Although we're not in a connection-oriented transport,
-	// the act of `dialing` is analogous to the act of performing
-	// a `connect(2)` syscall for a socket of type SOCK_DGRAM:
-	// - it forces the underlying socket to only read and write
-	//   to and from a specific remote address.
-	conn, err := net.DialUDP("udp", nil, raddr)
-	defer conn.Close()
-
-	if err != nil {
-		return
-	}
-
 	data := fmt.Sprintf("RL:%s:%s:%s:%d", appName, paramName, paramType, value)
 
-	_, err = conn.Write([]byte(data))
+	conn, err := net.Dial("udp", address)
 	if err != nil {
 		return err
 	}
+	_, err = fmt.Fprintf(conn, data)
 
-	return nil
+	if err != nil {
+		return err
+	}
+	return conn.Close()
 }
