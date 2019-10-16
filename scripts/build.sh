@@ -1,0 +1,1 @@
+GOOS=linux GOARCH=amd64 go build -o ./build/stat-proxy.linux.amd64 github.com/stels-cs/stat-proxy
