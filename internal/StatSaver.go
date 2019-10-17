@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/pgxpool"
 	"log"
 	"regexp"
 	"strconv"
@@ -28,7 +28,7 @@ func getTableName(appName string) string {
 type StatSaver struct {
 	logger         *log.Logger
 	databaseUrl    string
-	connection     *pgx.Conn
+	connection     *pgxpool.Pool
 	stop           chan bool
 	existingTables map[string]bool
 	sum            func(name string, value int)
@@ -44,7 +44,15 @@ func CreateStatSaver(logger *log.Logger, url string, sum func(name string, value
 }
 
 func (saver *StatSaver) Start() error {
-	conn, err := pgx.Connect(context.Background(), saver.databaseUrl)
+	config, err := pgxpool.ParseConfig(saver.databaseUrl)
+	if err != nil {
+		return err
+	}
+	config.MaxConns = 10
+	config.HealthCheckPeriod = 180 * time.Second
+	config.MaxConnLifetime = 10 * time.Minute
+
+	conn, err := pgxpool.ConnectConfig(context.Background(), config)
 	if err != nil {
 		return err
 	}
@@ -55,9 +63,10 @@ func (saver *StatSaver) Start() error {
 }
 
 func (saver *StatSaver) Stop() error {
-	err := saver.connection.Close(context.Background())
+	saver.connection.Close()
+	//err := saver.connection.Close(context.Background())
 	saver.stop <- false
-	return err
+	return nil
 }
 
 func (saver *StatSaver) GetName() string {
@@ -65,13 +74,17 @@ func (saver *StatSaver) GetName() string {
 }
 
 func (saver *StatSaver) Save(data map[string]map[string]int) {
+	count := 0
 	for appName, data := range data {
 		if isValidAppName(appName) {
 			saver.SaveAppData(appName, data)
+			count++
 		} else {
 			saver.logger.Println("Invalid app name", appName)
+			saver.sum("invalid_app", 1)
 		}
 	}
+	saver.sum("saved", 1)
 }
 
 func (saver *StatSaver) SaveAppData(appName string, data map[string]int) {
@@ -119,9 +132,7 @@ create index IF NOT EXISTS `+name+`_created_at_index on `+name+` (created_at des
 }
 
 func (saver *StatSaver) save(tableName string, nodeId int, data map[string]int) error {
-
 	now := time.Now().UTC()
-	count := 0
 	sqlStr := "INSERT INTO " + tableName + "(created_at,type,value,node_id) VALUES "
 	var values []interface{}
 
@@ -130,11 +141,9 @@ func (saver *StatSaver) save(tableName string, nodeId int, data map[string]int) 
 		sqlStr += fmt.Sprintf("($%d,$%d, $%d, $%d),", x, x+1, x+2, x+3)
 		values = append(values, now, name, val, nodeId)
 		x += 4
-		count++
 	}
 	//trim the last ,
 	sqlStr = sqlStr[0 : len(sqlStr)-1]
 	_, err := saver.connection.Exec(context.Background(), sqlStr, values...)
-	saver.sum("saved", count)
 	return err
 }
