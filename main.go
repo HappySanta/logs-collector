@@ -60,6 +60,8 @@ func main() {
 
 	appName := env("APP", "dev_log_saver/0")
 
+	internal.InitCache(defaultLogger, env("ACCESS_TOKEN", ""))
+
 	if env("UDP", "") != "" {
 		udpServer := internal.CreateUpdServer(core, env("UDP", ""), defaultLogger)
 		services.Push(udpServer)
@@ -106,20 +108,17 @@ func main() {
 				defaultLogger.Println("Err log:", err)
 			}
 
-			test := []string{
-				"app1",
-				"app1",
-				"app2",
-				"app3",
-				"app3",
-				"app5",
-			}
-			for _, app := range test {
-				err = internal.LogPattern(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "apps", 1, app)
-				if err != nil {
-					defaultLogger.Println("Err log:", err)
-				}
-			}
+			//group := internal.Get([]string{"1"})
+			//if g,has:=group["1"]; len(group) != 1 || !has {
+			//	defaultLogger.Println("Cant fetch group")
+			//} else {
+			//	defaultLogger.Println("Group: 1", g.Name)
+			//}
+			//
+			//err = internal.LogPattern(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "start_group_id", 1, "1")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
 		}()
 
 	} else {

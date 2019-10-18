@@ -218,6 +218,30 @@ func (saver *StatSaver) saveStringMetrics(tableName string, nodeId int, data map
 
 	x := 1
 	for name, list := range data {
+		if strings.HasSuffix(name, "_group_id") {
+			groupIds := make([]string, 0, len(list))
+
+			for pattern := range list {
+				groupIds = append(groupIds, pattern)
+			}
+
+			nameIndex := make(map[string]int)
+			if len(groupIds) > 0 {
+				index := Get(groupIds)
+				for groupId, group := range index {
+					if value, has := list[groupId]; has {
+						name := truncateString(group.Name, 190)
+						if _, has := nameIndex[name]; has {
+							name = truncateString("@"+groupId+" "+group.Name, 190)
+						}
+						nameIndex[name] = 1
+						list[name] = value
+						delete(list, groupId)
+					}
+				}
+			}
+		}
+
 		for pattern, count := range list {
 			sqlStr += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d),", x, x+1, x+2, x+3, x+4)
 			values = append(values, now, name, pattern, count, nodeId)
@@ -231,4 +255,15 @@ func (saver *StatSaver) saveStringMetrics(tableName string, nodeId int, data map
 		saver.logger.Println("Bad sql", sqlStr)
 	}
 	return err
+}
+
+func truncateString(str string, num int) string {
+	bnoden := str
+	if len(str) > num {
+		if num > 3 {
+			num -= 3
+		}
+		bnoden = str[0:num] + "..."
+	}
+	return bnoden
 }
