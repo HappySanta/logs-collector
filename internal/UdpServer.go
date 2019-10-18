@@ -12,6 +12,7 @@ const SetTag = "S"
 const MaxTag = "M"
 const MinTag = "I"
 const AvgTag = "A"
+const StrTag = "T"
 
 type UpdServer struct {
 	core           *CoreStatistic
@@ -82,7 +83,7 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	}
 	data := string(buf)
 	dataParts := strings.Split(data, ":")
-	if len(dataParts) != 5 {
+	if len(dataParts) != 5 && len(dataParts) != 6 {
 		//Bad pack
 		server.debounceLogger.Printf("Bad message format: %s %s", data, addr.String())
 		return
@@ -109,6 +110,13 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 		server.core.Min(appName, paramName, value)
 	} else if paramType == AvgTag {
 		server.core.Avg(appName, paramName, value)
+	} else if paramType == StrTag {
+		if len(dataParts) != 6 {
+			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())
+			return
+		}
+		stringValue := dataParts[5]
+		server.core.Str(appName, paramName, value, stringValue)
 	} else {
 		server.debounceLogger.Printf("Unknown param type: [%s] %s %s", paramType, appName, addr.String())
 		return

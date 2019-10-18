@@ -47,15 +47,30 @@ func (core *CoreStatistic) Min(appName, param string, value int) {
 func (core *CoreStatistic) Avg(appName, param string, value int) {
 	core.GetApp(appName).Avg(param, value)
 }
+func (core *CoreStatistic) Str(appName, param string, value int, pattern string) {
+	core.GetApp(appName).Str(param, value, pattern)
+}
 
-func (core *CoreStatistic) Slice() *map[string]*map[string]int {
+func (core *CoreStatistic) TakeIntMetrics() *map[string]*map[string]int {
 	result := make(map[string]*map[string]int)
+	buff := core.apps
+	for appName, app := range buff {
+		result[appName] = app.TakeIntMetrics()
+	}
+	return &result
+}
+
+func (core *CoreStatistic) TakeStringMetrics() *map[string]*map[string]map[string]int {
+	result := make(map[string]*map[string]map[string]int)
 	buff := core.apps
 	core.mutex.Lock()
 	core.apps = make(map[string]*AppStatistic)
 	core.mutex.Unlock()
 	for appName, app := range buff {
-		result[appName] = app.Slice()
+		m := app.TakeStringMetrics()
+		if m != nil && len(*m) > 0 {
+			result[appName] = m
+		}
 	}
 	return &result
 }

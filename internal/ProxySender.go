@@ -31,11 +31,9 @@ func CreateProxySender(core *CoreStatistic, url string, logger *log.Logger, save
 
 func (proxy *ProxySender) Start() error {
 	proxy.stop = false
-	now := time.Now()
-	x := proxy.saveTimeSec - now.Second()%proxy.saveTimeSec
-	proxy.timer = time.NewTicker(time.Duration(x) * time.Second)
-	reset := true
+	proxy.timer = time.NewTicker(time.Duration(proxy.saveTimeSec) * time.Second)
 	proxy.stopCh = make(chan bool, 1)
+	tick := 0
 	for {
 		select {
 		case <-proxy.timer.C:
@@ -45,12 +43,12 @@ func (proxy *ProxySender) Start() error {
 			proxy.timer.Stop()
 			return nil
 		}
-		if reset {
-			reset = false
-			proxy.timer.Stop()
-			proxy.timer = time.NewTicker(time.Duration(proxy.saveTimeSec) * time.Second)
+		go proxy.sendInt()
+		tick++
+		if tick >= 5 {
+			tick = 0
+			go proxy.sendString()
 		}
-		go proxy.send()
 	}
 }
 
@@ -64,8 +62,8 @@ func (proxy *ProxySender) Stop() error {
 	return nil
 }
 
-func (proxy *ProxySender) send() {
-	data := proxy.core.Slice()
+func (proxy *ProxySender) sendInt() {
+	data := proxy.core.TakeIntMetrics()
 	if data == nil || len(*data) <= 0 {
 		return
 	}
@@ -77,6 +75,42 @@ func (proxy *ProxySender) send() {
 	tr := http.Client{Timeout: time.Second * 300}
 
 	resp, err := tr.Post(proxy.url, "application/json", bytes.NewReader(raw))
+	defer resp.Body.Close()
+	if err != nil {
+		proxy.logger.Println("Send data error: ", err)
+		return
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		proxy.logger.Println("Read data error: ", err)
+		return
+	}
+	if string(body) != "OK" {
+		proxy.logger.Println("Bad response: ", string(body))
+	}
+}
+
+func (proxy *ProxySender) sendString() {
+	data := proxy.core.TakeStringMetrics()
+	if data == nil || len(*data) <= 0 {
+		return
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		proxy.logger.Println("Fail marshal data: ", err)
+		return
+	}
+	tr := http.Client{Timeout: time.Second * 600}
+
+	req, err := http.NewRequest("POST", proxy.url, bytes.NewReader(raw))
+	if err != nil {
+		proxy.logger.Println("Creating request error: ", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(StringHeader, "1")
+
+	resp, err := tr.Do(req)
 	defer resp.Body.Close()
 	if err != nil {
 		proxy.logger.Println("Send data error: ", err)

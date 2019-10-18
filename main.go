@@ -105,6 +105,21 @@ func main() {
 			if err != nil {
 				defaultLogger.Println("Err log:", err)
 			}
+
+			test := []string{
+				"app1",
+				"app1",
+				"app2",
+				"app3",
+				"app3",
+				"app5",
+			}
+			for _, app := range test {
+				err = internal.LogPattern(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "apps", 1, app)
+				if err != nil {
+					defaultLogger.Println("Err log:", err)
+				}
+			}
 		}()
 
 	} else {

@@ -21,8 +21,12 @@ func isValidAppName(name string) bool {
 	return r.MatchString(name)
 }
 
-func getTableName(appName string) string {
+func getIntTableName(appName string) string {
 	return "t_" + strings.ReplaceAll(appName, "-", "_")
+}
+
+func getStringTableName(appName string) string {
+	return "t_str_" + strings.ReplaceAll(appName, "-", "_")
 }
 
 type StatSaver struct {
@@ -73,11 +77,11 @@ func (saver *StatSaver) GetName() string {
 	return "StatSaver"
 }
 
-func (saver *StatSaver) Save(data map[string]map[string]int) {
+func (saver *StatSaver) SaveInt(data map[string]map[string]int) {
 	count := 0
 	for appName, data := range data {
 		if isValidAppName(appName) {
-			saver.SaveAppData(appName, data)
+			saver.SaveAppDataInt(appName, data)
 			count++
 		} else {
 			saver.logger.Println("Invalid app name", appName)
@@ -87,7 +91,7 @@ func (saver *StatSaver) Save(data map[string]map[string]int) {
 	saver.sum("saved", 1)
 }
 
-func (saver *StatSaver) SaveAppData(appName string, data map[string]int) {
+func (saver *StatSaver) SaveAppDataInt(appName string, data map[string]int) {
 	appParts := strings.Split(appName, "/")
 	if len(appParts) != 2 {
 		saver.logger.Println("Bad app parts", appName)
@@ -98,20 +102,20 @@ func (saver *StatSaver) SaveAppData(appName string, data map[string]int) {
 		saver.logger.Println("Bad node id", appName, err)
 		return
 	}
-	table := getTableName(appParts[0])
-	err = saver.createTable(table)
+	table := getIntTableName(appParts[0])
+	err = saver.createTableIntMetric(table)
 	if err != nil {
 		saver.logger.Println("Table not created", appName, err)
 		return
 	}
-	err = saver.save(table, nodeId, data)
+	err = saver.saveIntMetrics(table, nodeId, data)
 	if err != nil {
-		saver.logger.Println("Data save fail", appName, err)
+		saver.logger.Println("Data saveIntMetrics fail", appName, err)
 		return
 	}
 }
 
-func (saver *StatSaver) createTable(name string) error {
+func (saver *StatSaver) createTableIntMetric(name string) error {
 	if _, has := saver.existingTables[name]; has {
 		return nil
 	}
@@ -131,7 +135,7 @@ create index IF NOT EXISTS `+name+`_created_at_index on `+name+` (created_at des
 	return err
 }
 
-func (saver *StatSaver) save(tableName string, nodeId int, data map[string]int) error {
+func (saver *StatSaver) saveIntMetrics(tableName string, nodeId int, data map[string]int) error {
 	now := time.Now().UTC()
 	sqlStr := "INSERT INTO " + tableName + "(created_at,type,value,node_id) VALUES "
 	var values []interface{}
@@ -145,5 +149,86 @@ func (saver *StatSaver) save(tableName string, nodeId int, data map[string]int) 
 	//trim the last ,
 	sqlStr = sqlStr[0 : len(sqlStr)-1]
 	_, err := saver.connection.Exec(context.Background(), sqlStr, values...)
+	return err
+}
+
+func (saver *StatSaver) SaveString(data map[string]map[string]map[string]int) {
+	count := 0
+	for appName, data := range data {
+		if isValidAppName(appName) {
+			saver.SaveAppDataString(appName, data)
+			count++
+		} else {
+			saver.logger.Println("Invalid app name", appName)
+			saver.sum("invalid_app", 1)
+		}
+	}
+	saver.sum("saved", 1)
+}
+
+func (saver *StatSaver) SaveAppDataString(appName string, data map[string]map[string]int) {
+	appParts := strings.Split(appName, "/")
+	if len(appParts) != 2 {
+		saver.logger.Println("Bad app parts", appName)
+		return
+	}
+	nodeId, err := strconv.Atoi(appParts[1])
+	if err != nil {
+		saver.logger.Println("Bad node id", appName, err)
+		return
+	}
+	table := getStringTableName(appParts[0])
+	err = saver.createTableStringMetric(table)
+	if err != nil {
+		saver.logger.Println("Table not created", appName, err)
+		return
+	}
+	err = saver.saveStringMetrics(table, nodeId, data)
+	if err != nil {
+		saver.logger.Println("Data saveStringMetrics fail", appName, err)
+		return
+	}
+}
+
+func (saver *StatSaver) createTableStringMetric(name string) error {
+	if _, has := saver.existingTables[name]; has {
+		return nil
+	}
+	_, err := saver.connection.Exec(context.Background(), `create table IF NOT EXISTS `+name+`
+(
+	created_at timestamp default now(),
+	type varchar(50) not null,
+	pattern varchar(200) not null,
+	value integer not null,
+	node_id integer not null
+);
+create index IF NOT EXISTS `+name+`_created_at_index on `+name+` (created_at desc);
+`)
+
+	if err == nil {
+		saver.existingTables[name] = true
+	}
+	return err
+}
+
+func (saver *StatSaver) saveStringMetrics(tableName string, nodeId int, data map[string]map[string]int) error {
+	now := time.Now().UTC()
+	sqlStr := "INSERT INTO " + tableName + "(created_at,type,pattern,value,node_id) VALUES "
+	var values []interface{}
+
+	x := 1
+	for name, list := range data {
+		for pattern, count := range list {
+			sqlStr += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d),", x, x+1, x+2, x+3, x+4)
+			values = append(values, now, name, pattern, count, nodeId)
+			x += 5
+		}
+	}
+	//trim the last ,
+	sqlStr = sqlStr[0 : len(sqlStr)-1]
+	_, err := saver.connection.Exec(context.Background(), sqlStr, values...)
+	if err != nil {
+		saver.logger.Println("Bad sql", sqlStr)
+	}
 	return err
 }
