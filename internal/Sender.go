@@ -21,8 +21,24 @@ func LogSet(address, appName, paramName string, value int) error {
 	return LogStatistic(address, appName, paramName, SetTag, value)
 }
 
-func LogPattern(address, appName, paramName string, value int, pattern string) error {
-	return LogStatisticEx(address, appName, paramName, StrTag, value, pattern)
+func LogStrSum(address, appName, paramName string, value int, pattern string) error {
+	return LogStatisticEx(address, appName, paramName, StrSumTag, value, pattern)
+}
+
+func LogStrAvg(address, appName, paramName string, value int, pattern string) error {
+	return LogStatisticEx(address, appName, paramName, StrAvgTag, value, pattern)
+}
+
+func LogStrMax(address, appName, paramName string, value int, pattern string) error {
+	return LogStatisticEx(address, appName, paramName, StrMaxTag, value, pattern)
+}
+
+func LogStrMin(address, appName, paramName string, value int, pattern string) error {
+	return LogStatisticEx(address, appName, paramName, StrMinTag, value, pattern)
+}
+
+func LogStrSet(address, appName, paramName string, value int, pattern string) error {
+	return LogStatisticEx(address, appName, paramName, StrSetTag, value, pattern)
 }
 
 func LogStatistic(address, appName, paramName, paramType string, value int) (err error) {

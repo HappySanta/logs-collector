@@ -117,6 +117,8 @@ func (app *AppStatistic) TakeStringMetrics() *map[string]map[string]int {
 				if valueRaw, ok := cache.Get(keyRaw); ok {
 					if value, ok := valueRaw.(int); ok {
 						buff[pattern] = value
+					} else if value, ok := valueRaw.([2]int); ok {
+						buff[pattern] = value[0] / value[1]
 					} else {
 						log.Printf("Cant cast value to int metric: %s, pattern: %s", metric, pattern)
 					}
@@ -132,13 +134,13 @@ func (app *AppStatistic) TakeStringMetrics() *map[string]map[string]int {
 	return &result
 }
 
-func (app *AppStatistic) Str(name string, value int, pattern string) {
+func (app *AppStatistic) StrSum(name string, value int, pattern string) {
 	if app.overload {
 		return
 	}
 	app.mutex.Lock()
 	if cache, has := app.patterns[name]; has {
-		oldValueI, has := cache.Get(pattern)
+		oldValueI, has := cache.Peek(pattern)
 		if has {
 			oldValue, ok := oldValueI.(int)
 			if ok {
@@ -155,6 +157,118 @@ func (app *AppStatistic) Str(name string, value int, pattern string) {
 			log.Println("Fail create pattern cache for app", app.name, err)
 		} else {
 			cache.Add(pattern, value)
+			app.patterns[name] = cache
+		}
+	}
+	app.overloadCheck()
+	app.mutex.Unlock()
+}
+
+func (app *AppStatistic) StrSet(name string, value int, pattern string) {
+	if app.overload {
+		return
+	}
+	app.mutex.Lock()
+	if cache, has := app.patterns[name]; has {
+		cache.Add(pattern, value)
+	} else {
+		cache, err := lru.New(PatternSize)
+		if err != nil {
+			log.Println("Fail create pattern cache for app", app.name, err)
+		} else {
+			cache.Add(pattern, value)
+			app.patterns[name] = cache
+		}
+	}
+	app.overloadCheck()
+	app.mutex.Unlock()
+}
+
+func (app *AppStatistic) StrMin(name string, value int, pattern string) {
+	if app.overload {
+		return
+	}
+	app.mutex.Lock()
+	if cache, has := app.patterns[name]; has {
+		oldValueI, has := cache.Peek(pattern)
+		if has {
+			oldValue, ok := oldValueI.(int)
+			if ok && oldValue < value {
+				cache.Add(pattern, oldValue)
+			} else {
+				cache.Add(pattern, value)
+			}
+		} else {
+			cache.Add(pattern, value)
+		}
+	} else {
+		cache, err := lru.New(PatternSize)
+		if err != nil {
+			log.Println("Fail create pattern cache for app", app.name, err)
+		} else {
+			cache.Add(pattern, value)
+			app.patterns[name] = cache
+		}
+	}
+	app.overloadCheck()
+	app.mutex.Unlock()
+}
+
+func (app *AppStatistic) StrMax(name string, value int, pattern string) {
+	if app.overload {
+		return
+	}
+	app.mutex.Lock()
+	if cache, has := app.patterns[name]; has {
+		oldValueI, has := cache.Peek(pattern)
+		if has {
+			oldValue, ok := oldValueI.(int)
+			if ok && oldValue > value {
+				cache.Add(pattern, oldValue)
+			} else {
+				cache.Add(pattern, value)
+			}
+		} else {
+			cache.Add(pattern, value)
+		}
+	} else {
+		cache, err := lru.New(PatternSize)
+		if err != nil {
+			log.Println("Fail create pattern cache for app", app.name, err)
+		} else {
+			cache.Add(pattern, value)
+			app.patterns[name] = cache
+		}
+	}
+	app.overloadCheck()
+	app.mutex.Unlock()
+}
+
+func (app *AppStatistic) StrAvg(name string, value int, pattern string) {
+	if app.overload {
+		return
+	}
+	app.mutex.Lock()
+	if cache, has := app.patterns[name]; has {
+		oldValueI, has := cache.Peek(pattern)
+		if has {
+			oldValue, ok := oldValueI.([2]int)
+			if ok {
+				sum := oldValue[0] + value
+				count := oldValue[1] + 1
+				cache.Add(pattern, [2]int{sum, count})
+			} else {
+				cache.Add(pattern, [2]int{value, 1})
+			}
+		} else {
+			cache.Add(pattern, [2]int{value, 1})
+		}
+	} else {
+		cache, err := lru.New(PatternSize)
+		if err != nil {
+			log.Println("Fail create pattern cache for app", app.name, err)
+		} else {
+			cache.Add(pattern, [2]int{value, 1})
 			app.patterns[name] = cache
 		}
 	}

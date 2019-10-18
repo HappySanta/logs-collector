@@ -252,7 +252,7 @@ func (saver *StatSaver) saveStringMetrics(tableName string, nodeId int, data map
 		} else {
 			for pattern, count := range list {
 				sqlStr += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d),", x, x+1, x+2, x+3, x+4)
-				values = append(values, now, name, pattern, count, nodeId)
+				values = append(values, now, name, truncateString(pattern, 200), count, nodeId)
 				x += 5
 			}
 		}

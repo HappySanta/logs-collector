@@ -115,7 +115,52 @@ func main() {
 			//	defaultLogger.Println("Group: 1", g.Name)
 			//}
 			//
-			//err = internal.LogPattern(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "start_group_id", 1, "1")
+			//
+			//err = internal.LogStrSum(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "sum", 2, "5")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogStrSum(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "sum", 3, "5")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogStrSum(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "sum", 2, "2")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//
+			//err = internal.LogStrMin(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "min", 5, "5")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogStrMin(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "min", 10, "5")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//
+			//err = internal.LogStrMax(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "max", 10, "10")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogStrMax(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "max", 5, "10")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//
+			//err = internal.LogStrSet(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "set", 9, "10")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogStrSet(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "set", 10, "10")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//
+			//err = internal.LogStrAvg(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "avg", 15, "10")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogStrAvg(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "avg", 5, "10")
 			//if err != nil {
 			//	defaultLogger.Println("Err log:", err)
 			//}

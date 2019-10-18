@@ -12,7 +12,11 @@ const SetTag = "S"
 const MaxTag = "M"
 const MinTag = "I"
 const AvgTag = "A"
-const StrTag = "T"
+const StrSumTag = "T"
+const StrSetTag = "E"
+const StrMinTag = "N"
+const StrMaxTag = "X"
+const StrAvgTag = "G"
 
 type UpdServer struct {
 	core           *CoreStatistic
@@ -110,13 +114,41 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 		server.core.Min(appName, paramName, value)
 	} else if paramType == AvgTag {
 		server.core.Avg(appName, paramName, value)
-	} else if paramType == StrTag {
+	} else if paramType == StrSetTag {
 		if len(dataParts) != 6 {
 			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())
 			return
 		}
 		stringValue := dataParts[5]
-		server.core.Str(appName, paramName, value, stringValue)
+		server.core.StrSet(appName, paramName, value, stringValue)
+	} else if paramType == StrMinTag {
+		if len(dataParts) != 6 {
+			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())
+			return
+		}
+		stringValue := dataParts[5]
+		server.core.StrMin(appName, paramName, value, stringValue)
+	} else if paramType == StrMaxTag {
+		if len(dataParts) != 6 {
+			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())
+			return
+		}
+		stringValue := dataParts[5]
+		server.core.StrMax(appName, paramName, value, stringValue)
+	} else if paramType == StrAvgTag {
+		if len(dataParts) != 6 {
+			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())
+			return
+		}
+		stringValue := dataParts[5]
+		server.core.StrAvg(appName, paramName, value, stringValue)
+	} else if paramType == StrSumTag {
+		if len(dataParts) != 6 {
+			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())
+			return
+		}
+		stringValue := dataParts[5]
+		server.core.StrSum(appName, paramName, value, stringValue)
 	} else {
 		server.debounceLogger.Printf("Unknown param type: [%s] %s %s", paramType, appName, addr.String())
 		return

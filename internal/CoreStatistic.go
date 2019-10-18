@@ -47,8 +47,20 @@ func (core *CoreStatistic) Min(appName, param string, value int) {
 func (core *CoreStatistic) Avg(appName, param string, value int) {
 	core.GetApp(appName).Avg(param, value)
 }
-func (core *CoreStatistic) Str(appName, param string, value int, pattern string) {
-	core.GetApp(appName).Str(param, value, pattern)
+func (core *CoreStatistic) StrSum(appName, param string, value int, pattern string) {
+	core.GetApp(appName).StrSum(param, value, pattern)
+}
+func (core *CoreStatistic) StrSet(appName, param string, value int, pattern string) {
+	core.GetApp(appName).StrSet(param, value, pattern)
+}
+func (core *CoreStatistic) StrMin(appName, param string, value int, pattern string) {
+	core.GetApp(appName).StrMin(param, value, pattern)
+}
+func (core *CoreStatistic) StrMax(appName, param string, value int, pattern string) {
+	core.GetApp(appName).StrMax(param, value, pattern)
+}
+func (core *CoreStatistic) StrAvg(appName, param string, value int, pattern string) {
+	core.GetApp(appName).StrAvg(param, value, pattern)
 }
 
 func (core *CoreStatistic) TakeIntMetrics() *map[string]*map[string]int {
