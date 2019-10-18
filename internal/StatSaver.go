@@ -234,18 +234,27 @@ func (saver *StatSaver) saveStringMetrics(tableName string, nodeId int, data map
 						if _, has := nameIndex[name]; has {
 							name = truncateString("@"+groupId+" "+group.Name, 190)
 						}
-						nameIndex[name] = 1
+						nameIndex[name] = strToInt(groupId)
 						list[name] = value
 						delete(list, groupId)
 					}
 				}
 			}
-		}
-
-		for pattern, count := range list {
-			sqlStr += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d),", x, x+1, x+2, x+3, x+4)
-			values = append(values, now, name, pattern, count, nodeId)
-			x += 5
+			for pattern, count := range list {
+				sqlStr += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d),", x, x+1, x+2, x+3, x+4)
+				if gId, has := nameIndex[pattern]; has {
+					values = append(values, now, name, pattern, count, gId)
+				} else {
+					values = append(values, now, name, pattern, count, nodeId)
+				}
+				x += 5
+			}
+		} else {
+			for pattern, count := range list {
+				sqlStr += fmt.Sprintf("($%d,$%d,$%d,$%d,$%d),", x, x+1, x+2, x+3, x+4)
+				values = append(values, now, name, pattern, count, nodeId)
+				x += 5
+			}
 		}
 	}
 	//trim the last ,
