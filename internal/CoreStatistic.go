@@ -62,6 +62,9 @@ func (core *CoreStatistic) StrMax(appName, param string, value int, pattern stri
 func (core *CoreStatistic) StrAvg(appName, param string, value int, pattern string) {
 	core.GetApp(appName).StrAvg(param, value, pattern)
 }
+func (core *CoreStatistic) Hll(appName, param string, pattern string) {
+	core.GetApp(appName).Hll(param, pattern)
+}
 
 func (core *CoreStatistic) TakeIntMetrics() *map[string]*map[string]int {
 	result := make(map[string]*map[string]int)

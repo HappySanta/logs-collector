@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"github.com/axiomhq/hyperloglog"
 	lru "github.com/hashicorp/golang-lru"
 	"log"
 	"sync"
@@ -11,10 +12,11 @@ const PatternSize = 100
 
 type AppStatistic struct {
 	metrics  map[string]int
+	patterns map[string]*lru.Cache
+	hll      map[string]*hyperloglog.Sketch
 	name     string
 	overload bool
 	mutex    sync.Mutex
-	patterns map[string]*lru.Cache
 }
 
 func CreateAppStatistic(name string) *AppStatistic {
@@ -22,6 +24,7 @@ func CreateAppStatistic(name string) *AppStatistic {
 		name:     name,
 		metrics:  make(map[string]int),
 		patterns: make(map[string]*lru.Cache),
+		hll:      make(map[string]*hyperloglog.Sketch),
 		overload: false,
 		mutex:    sync.Mutex{},
 	}
@@ -32,6 +35,9 @@ func (app *AppStatistic) overloadCheck() {
 		app.overload = true
 	}
 	if len(app.patterns) > MaxMetricCount {
+		app.overload = true
+	}
+	if len(app.hll) > MaxMetricCount {
 		app.overload = true
 	}
 }
@@ -99,6 +105,10 @@ func (app *AppStatistic) TakeIntMetrics() *map[string]int {
 	for metric, value := range app.metrics {
 		result[metric] = value
 	}
+	for metric, hll := range app.hll {
+		result[metric] = int(hll.Estimate())
+	}
+	app.hll = make(map[string]*hyperloglog.Sketch)
 	app.metrics = make(map[string]int)
 	app.overload = false
 	return &result
@@ -271,6 +281,22 @@ func (app *AppStatistic) StrAvg(name string, value int, pattern string) {
 			cache.Add(pattern, [2]int{value, 1})
 			app.patterns[name] = cache
 		}
+	}
+	app.overloadCheck()
+	app.mutex.Unlock()
+}
+
+func (app *AppStatistic) Hll(name, pattern string) {
+	if app.overload {
+		return
+	}
+	app.mutex.Lock()
+	if hll, has := app.hll[name]; has {
+		hll.Insert([]byte(pattern))
+	} else {
+		hll := hyperloglog.New16()
+		hll.Insert([]byte(pattern))
+		app.hll[name] = hll
 	}
 	app.overloadCheck()
 	app.mutex.Unlock()

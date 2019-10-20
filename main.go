@@ -164,6 +164,22 @@ func main() {
 			//if err != nil {
 			//	defaultLogger.Println("Err log:", err)
 			//}
+			//err = internal.LogHll(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "hll", "10")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogHll(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "hll", "20")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogHll(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "hll", "10")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
+			//err = internal.LogHll(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "hll", "15")
+			//if err != nil {
+			//	defaultLogger.Println("Err log:", err)
+			//}
 		}()
 
 	} else {
