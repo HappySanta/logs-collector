@@ -90,7 +90,7 @@ func main() {
 			defaultLogger.Println("Bad save time, used default: 60", env("SAVE_TIME", "60"))
 			saveTime = 60
 		}
-		proxy := internal.CreateProxySender(core, env("PROXY_TO", ""), defaultLogger, saveTime)
+		proxy := internal.CreateProxySender(core, env("PROXY_TO", ""), env("TMP_FILE", "./data.tmp"), defaultLogger, saveTime)
 		services.Push(proxy)
 	}
 
@@ -176,10 +176,11 @@ func main() {
 			//if err != nil {
 			//	defaultLogger.Println("Err log:", err)
 			//}
-			//err = internal.LogHll(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "hll", "15")
+			//err = internal.LogHllDay(env("LOG_ADDRESS", "127.0.0.1:1007"), appName, "hllday", "15")
 			//if err != nil {
 			//	defaultLogger.Println("Err log:", err)
 			//}
+
 		}()
 
 	} else {

@@ -43,6 +43,9 @@ func LogStrSet(address, appName, paramName string, value int, pattern string) er
 func LogHll(address, appName, paramName string, pattern string) error {
 	return LogStatisticEx(address, appName, paramName, HllTag, 0, pattern)
 }
+func LogHllDay(address, appName, paramName string, pattern string) error {
+	return LogStatisticEx(address, appName, paramName, HllDayTag, 0, pattern)
+}
 
 func LogStatistic(address, appName, paramName, paramType string, value int) (err error) {
 	data := fmt.Sprintf("RL:%s:%s:%s:%d", appName, paramName, paramType, value)

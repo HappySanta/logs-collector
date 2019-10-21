@@ -14,6 +14,7 @@ type AppStatistic struct {
 	metrics  map[string]int
 	patterns map[string]*lru.Cache
 	hll      map[string]*hyperloglog.Sketch
+	hllDay   map[string]*hyperloglog.Sketch
 	name     string
 	overload bool
 	mutex    sync.Mutex
@@ -25,6 +26,7 @@ func CreateAppStatistic(name string) *AppStatistic {
 		metrics:  make(map[string]int),
 		patterns: make(map[string]*lru.Cache),
 		hll:      make(map[string]*hyperloglog.Sketch),
+		hllDay:   make(map[string]*hyperloglog.Sketch),
 		overload: false,
 		mutex:    sync.Mutex{},
 	}
@@ -38,6 +40,9 @@ func (app *AppStatistic) overloadCheck() {
 		app.overload = true
 	}
 	if len(app.hll) > MaxMetricCount {
+		app.overload = true
+	}
+	if len(app.hllDay) > MaxMetricCount {
 		app.overload = true
 	}
 }
@@ -110,6 +115,18 @@ func (app *AppStatistic) TakeIntMetrics() *map[string]int {
 	}
 	app.hll = make(map[string]*hyperloglog.Sketch)
 	app.metrics = make(map[string]int)
+	app.overload = false
+	return &result
+}
+
+func (app *AppStatistic) TakeIntDayMetrics() *map[string]int {
+	app.mutex.Lock()
+	defer app.mutex.Unlock()
+	result := make(map[string]int)
+	for metric, hll := range app.hllDay {
+		result[metric] = int(hll.Estimate())
+	}
+	app.hllDay = make(map[string]*hyperloglog.Sketch)
 	app.overload = false
 	return &result
 }
@@ -300,4 +317,49 @@ func (app *AppStatistic) Hll(name, pattern string) {
 	}
 	app.overloadCheck()
 	app.mutex.Unlock()
+}
+
+func (app *AppStatistic) HllDay(name, pattern string) {
+	if app.overload {
+		return
+	}
+	app.mutex.Lock()
+	if hll, has := app.hllDay[name]; has {
+		hll.Insert([]byte(pattern))
+	} else {
+		hll := hyperloglog.New16()
+		hll.Insert([]byte(pattern))
+		app.hllDay[name] = hll
+	}
+	app.overloadCheck()
+	app.mutex.Unlock()
+}
+
+func (app *AppStatistic) GetData() map[string][]byte {
+	app.mutex.Lock()
+	defer app.mutex.Unlock()
+	buff := make(map[string][]byte)
+	for key, hll := range app.hllDay {
+		tmp, err := hll.MarshalBinary()
+		if err == nil {
+			buff[key] = tmp
+		} else {
+			log.Println("Fail marshal data", key, err)
+		}
+	}
+	return buff
+}
+
+func (app *AppStatistic) RestoreData(res map[string][]byte) {
+	app.mutex.Lock()
+	defer app.mutex.Unlock()
+	for key, data := range res {
+		h := hyperloglog.New16()
+		err := h.UnmarshalBinary(data)
+		if err == nil {
+			app.hllDay[key] = h
+		} else {
+			log.Println("Fail unmarshal data", key, err)
+		}
+	}
 }

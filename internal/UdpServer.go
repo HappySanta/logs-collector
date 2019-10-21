@@ -13,6 +13,7 @@ const MaxTag = "M"
 const MinTag = "I"
 const AvgTag = "A"
 const HllTag = "L"
+const HllDayTag = "D"
 const StrSumTag = "T"
 const StrSetTag = "E"
 const StrMinTag = "N"
@@ -115,6 +116,13 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 		server.core.Min(appName, paramName, value)
 	} else if paramType == AvgTag {
 		server.core.Avg(appName, paramName, value)
+	} else if paramType == HllDayTag {
+		if len(dataParts) != 6 {
+			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())
+			return
+		}
+		stringValue := dataParts[5]
+		server.core.HllDay(appName, paramName, stringValue)
 	} else if paramType == HllTag {
 		if len(dataParts) != 6 {
 			server.debounceLogger.Printf("Bad message format for string: %s %s", data, addr.String())

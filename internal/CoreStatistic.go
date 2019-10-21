@@ -65,6 +65,9 @@ func (core *CoreStatistic) StrAvg(appName, param string, value int, pattern stri
 func (core *CoreStatistic) Hll(appName, param string, pattern string) {
 	core.GetApp(appName).Hll(param, pattern)
 }
+func (core *CoreStatistic) HllDay(appName, param string, pattern string) {
+	core.GetApp(appName).HllDay(param, pattern)
+}
 
 func (core *CoreStatistic) TakeIntMetrics() *map[string]*map[string]int {
 	result := make(map[string]*map[string]int)
@@ -75,12 +78,21 @@ func (core *CoreStatistic) TakeIntMetrics() *map[string]*map[string]int {
 	return &result
 }
 
-func (core *CoreStatistic) TakeStringMetrics() *map[string]*map[string]map[string]int {
-	result := make(map[string]*map[string]map[string]int)
+func (core *CoreStatistic) TakeIntDayMetrics() *map[string]*map[string]int {
+	result := make(map[string]*map[string]int)
 	buff := core.apps
 	core.mutex.Lock()
 	core.apps = make(map[string]*AppStatistic)
 	core.mutex.Unlock()
+	for appName, app := range buff {
+		result[appName] = app.TakeIntDayMetrics()
+	}
+	return &result
+}
+
+func (core *CoreStatistic) TakeStringMetrics() *map[string]*map[string]map[string]int {
+	result := make(map[string]*map[string]map[string]int)
+	buff := core.apps
 	for appName, app := range buff {
 		m := app.TakeStringMetrics()
 		if m != nil && len(*m) > 0 {
@@ -88,4 +100,23 @@ func (core *CoreStatistic) TakeStringMetrics() *map[string]*map[string]map[strin
 		}
 	}
 	return &result
+}
+
+func (core *CoreStatistic) GetDataToSave() map[string]map[string][]byte {
+	core.mutex.Lock()
+	defer core.mutex.Unlock()
+	buff := make(map[string]map[string][]byte)
+	for appName, app := range core.apps {
+		data := app.GetData()
+		if len(data) > 0 {
+			buff[appName] = data
+		}
+	}
+	return buff
+}
+
+func (core *CoreStatistic) RestoreData(data map[string]map[string][]byte) {
+	for appName, raw := range data {
+		core.GetApp(appName).RestoreData(raw)
+	}
 }
