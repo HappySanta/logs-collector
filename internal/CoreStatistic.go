@@ -73,7 +73,10 @@ func (core *CoreStatistic) TakeIntMetrics() *map[string]*map[string]int {
 	result := make(map[string]*map[string]int)
 	buff := core.apps
 	for appName, app := range buff {
-		result[appName] = app.TakeIntMetrics()
+		x := app.TakeIntMetrics()
+		if x != nil && len(*x) > 0 {
+			result[appName] = x
+		}
 	}
 	return &result
 }
@@ -85,7 +88,10 @@ func (core *CoreStatistic) TakeIntDayMetrics() *map[string]*map[string]int {
 	core.apps = make(map[string]*AppStatistic)
 	core.mutex.Unlock()
 	for appName, app := range buff {
-		result[appName] = app.TakeIntDayMetrics()
+		x := app.TakeIntDayMetrics()
+		if x != nil && len(*x) > 0 {
+			result[appName] = x
+		}
 	}
 	return &result
 }

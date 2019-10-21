@@ -102,7 +102,7 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	value, err := strconv.Atoi(paramValue)
 	if err != nil {
 		//bad pack
-		server.debounceLogger.Printf("Bad value: %s %s %s", paramValue, appName, addr.String())
+		server.debounceLogger.Printf("Bad value: metric:%s value:%s app:%s addr:%s", paramName, paramValue, appName, addr.String())
 		return
 	}
 

@@ -80,11 +80,16 @@ func (saver *StatSaver) GetName() string {
 func (saver *StatSaver) SaveInt(data map[string]map[string]int) {
 	count := 0
 	for appName, data := range data {
-		if isValidAppName(appName) {
-			saver.SaveAppDataInt(appName, data)
-			count++
+		if len(data) > 0 {
+			if isValidAppName(appName) {
+				saver.SaveAppDataInt(appName, data)
+				count++
+			} else {
+				saver.logger.Println("Invalid app name", appName)
+				saver.sum("invalid_app", 1)
+			}
 		} else {
-			saver.logger.Println("Invalid app name", appName)
+			saver.logger.Println("No data from app", appName)
 			saver.sum("invalid_app", 1)
 		}
 	}
@@ -110,6 +115,7 @@ func (saver *StatSaver) SaveAppDataInt(appName string, data map[string]int) {
 	}
 	err = saver.saveIntMetrics(table, nodeId, data)
 	if err != nil {
+		saver.sum("save_error", 1)
 		saver.logger.Println("Data saveIntMetrics fail", appName, err)
 		return
 	}
@@ -142,13 +148,16 @@ func (saver *StatSaver) saveIntMetrics(tableName string, nodeId int, data map[st
 
 	x := 1
 	for name, val := range data {
-		sqlStr += fmt.Sprintf("($%d,$%d, $%d, $%d),", x, x+1, x+2, x+3)
+		sqlStr += fmt.Sprintf("($%d,$%d,$%d,$%d),", x, x+1, x+2, x+3)
 		values = append(values, now, name, val, nodeId)
 		x += 4
 	}
 	//trim the last ,
 	sqlStr = sqlStr[0 : len(sqlStr)-1]
 	_, err := saver.connection.Exec(context.Background(), sqlStr, values...)
+	if err != nil {
+		saver.logger.Println("Bad sql", sqlStr)
+	}
 	return err
 }
 
@@ -185,6 +194,7 @@ func (saver *StatSaver) SaveAppDataString(appName string, data map[string]map[st
 	}
 	err = saver.saveStringMetrics(table, nodeId, data)
 	if err != nil {
+		saver.sum("save_error", 1)
 		saver.logger.Println("Data saveStringMetrics fail", appName, err)
 		return
 	}
