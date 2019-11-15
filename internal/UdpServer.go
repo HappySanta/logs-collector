@@ -91,7 +91,7 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	dataParts := strings.Split(data, ":")
 	if len(dataParts) != 5 && len(dataParts) != 6 {
 		//Bad pack
-		server.debounceLogger.Printf("Bad message format: %s %s", data, addr.String())
+		server.debounceLogger.Printf("Bad message format: data=%s len=%d", data, len(dataParts))
 		return
 	}
 	appName := dataParts[1]
@@ -102,7 +102,7 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	value, err := strconv.Atoi(paramValue)
 	if err != nil {
 		//bad pack
-		server.debounceLogger.Printf("Bad value: metric:%s value:%s app:%s addr:%s", paramName, paramValue, appName, addr.String())
+		server.debounceLogger.Printf("Bad value: metric:%s value:%s app:%s addr:%s", paramName, paramValue, appName, data)
 		return
 	}
 
