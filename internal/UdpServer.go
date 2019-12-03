@@ -88,7 +88,7 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 		return
 	}
 	data := string(buf)
-	dataParts := strings.Split(data, ":")
+	dataParts := strings.SplitN(data, ":", 6)
 	if len(dataParts) != 5 && len(dataParts) != 6 {
 		//Bad pack
 		server.debounceLogger.Printf("Bad message format: data=%s len=%d", data, len(dataParts))

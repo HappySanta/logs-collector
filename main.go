@@ -195,6 +195,7 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT)
 	signal.Notify(signalChan, syscall.SIGUSR1)
+	signal.Notify(signalChan, syscall.SIGTERM)
 	sig := <-signalChan
 	defaultLogger.Println(sig.String())
 	defaultLogger.Println("Stopping...")
