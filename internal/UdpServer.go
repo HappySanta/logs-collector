@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"log"
 	"net"
 	"strconv"
@@ -83,9 +84,15 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 		return
 	}
 	if buf[0] != 'R' || buf[1] != 'L' || buf[2] != ':' {
-		//Bad pack
-		server.debounceLogger.Printf("Bad message header: %d %d %d %s", buf[0], buf[1], buf[2], addr.String())
-		return
+		//try skip prefix for syslog perhaps
+		index := bytes.Index(buf, []byte{'R', 'L', ':'})
+		if index != -1 {
+			buf = buf[index:]
+		} else {
+			//Bad pack
+			server.debounceLogger.Printf("Bad message header: %d %d %d %s", buf[0], buf[1], buf[2], string(buf))
+			return
+		}
 	}
 	data := string(buf)
 	dataParts := strings.SplitN(data, ":", 6)
@@ -99,11 +106,24 @@ func (server *UpdServer) serve(pc net.PacketConn, addr net.Addr, buf []byte) {
 	paramType := dataParts[3]
 	paramValue := dataParts[4]
 
-	value, err := strconv.Atoi(paramValue)
-	if err != nil {
-		//bad pack
-		server.debounceLogger.Printf("Bad value: metric:%s value:%s app:%s addr:%s", paramName, paramValue, appName, data)
-		return
+	value := 0
+	var err error
+
+	if strings.IndexAny(paramValue, ".") != -1 {
+		f, err := strconv.ParseFloat(paramValue, 64)
+		if err != nil {
+			//bad pack
+			server.debounceLogger.Printf("Bad value: metric:%s value:%s app:%s addr:%s", paramName, paramValue, appName, data)
+			return
+		}
+		value = int(f * 1000)
+	} else {
+		value, err = strconv.Atoi(paramValue)
+		if err != nil {
+			//bad pack
+			server.debounceLogger.Printf("Bad value: metric:%s value:%s app:%s addr:%s", paramName, paramValue, appName, data)
+			return
+		}
 	}
 
 	if paramType == SetTag {
